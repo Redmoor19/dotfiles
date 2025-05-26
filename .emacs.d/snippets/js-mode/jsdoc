@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: JsDoc Function
+# key: @doc
+# expand-env: ((yas-indent-line 'fixed))
+# --
+/** ${1}
+ * @returns {${2:object}}
+ */

@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: className
+# key: cn
+# expand-env: ((yas-wrap-around-region nil) (fc-name (file-name-sans-extension (buffer-name))))
+# --
+className="$1"

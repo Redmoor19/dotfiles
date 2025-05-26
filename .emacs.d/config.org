@@ -1,0 +1,1144 @@
+#+title: GNU Emacs Config
+#+author: SciPunch
+#+description: My personal config
+#+PROPERTY: header-args :tangle config.el
+
+* Ideas
+- Open project's makefile by key bind
+- Add to makefile default language specific commands
+  - Rust: cargo, shuttle
+  - Python: poetry
+- Simulate single mode-line when multiple windows opened
+- Check spell using tree-sitter and Ispell/Aspell. The key is to check only custom named nodes (like class, function, variable, string and etc.). Make it independent from Emacs to use as pre-commit hook or in any CI/CD pipeline
+
+* Important things to first
+
+** Path
+
+#+begin_src elisp
+;; -*- lexical-binding: t; -*-
+(add-to-list 'exec-path (expand-file-name "~/.pyenv/bin"))
+(add-to-list 'exec-path (expand-file-name "~/.local/bin"))
+(add-to-list 'exec-path (expand-file-name "/run/user/1000/fnm_multishells/627721_1747079725713/bin"))
+(setenv "PATH" (concat (mapconcat #'identity exec-path path-separator) (getenv "PATH")))
+#+end_src
+
+** Native compile
+
+#+begin_src elisp
+(setq comp-deferred-compilation nil)
+(custom-set-variables '(warning-suppress-types '((comp))))
+#+end_src
+
+** Setup package manager
+
+#+begin_src elisp
+(setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                         ("org" . "https://orgmode.org/elpa/")
+                         ("elpa" . "https://elpa.gnu.org/packages/")
+                         ("nongnu" . "https://elpa.nongnu.org/nongnu/")))
+(require 'package)
+(setq package-quickstart t)
+(package-initialize)
+(require 'use-package)
+(setq use-package-always-ensure t)
+#+end_src
+
+** Debug on error
+
+#+begin_src elisp
+(setq-default debug-on-error nil)
+#+end_src
+
+** Profiling
+
+#+begin_src elisp
+(setq use-package-compute-statistics nil)
+#+end_src
+
+** Diminish
+
+#+begin_src elisp
+(use-package diminish)
+#+end_src
+
+** Turn off beeping
+
+#+begin_src elisp
+(setq ring-bell-function 'ignore)
+#+end_src
+
+
+** Server
+
+#+begin_src elisp
+(use-package server
+  :ensure nil
+  :defer 1
+  :config
+  (setq server-client-instructions nil)
+  (unless (server-running-p)
+    (server-start)))
+#+end_src
+
+* Dev
+** Common
+*** Dumb jump
+
+#+begin_src elisp
+(use-package dumb-jump
+  :custom
+  (dumb-jump-rg-search-args "--pcre2 --max-filesize 80M --no-ignore --hidden")
+  :config
+  (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
+#+end_src
+
+*** Treesitter
+
+#+begin_src elisp
+  (setq treesit-font-lock-level 4)
+  (defun my/treesit-install-grammars ()
+    "Install Tree-sitter grammars if they are absent."
+    (interactive)
+    (require 'treesit)
+    (dolist (grammar
+             '((css
+                .
+                ("https://github.com/tree-sitter/tree-sitter-css"
+                 "v0.20.0"))
+               (bash "https://github.com/tree-sitter/tree-sitter-bash")
+               (html
+                .
+                ("https://github.com/tree-sitter/tree-sitter-html"
+                 "v0.20.1"))
+               (javascript
+                .
+                ("https://github.com/tree-sitter/tree-sitter-javascript"
+                 "v0.21.2"
+                 "src"))
+               (json
+                .
+                ("https://github.com/tree-sitter/tree-sitter-json"
+                 "v0.20.2"))
+               (python
+                .
+                ("https://github.com/tree-sitter/tree-sitter-python"
+                 "v0.20.4"))
+               (go
+                "https://github.com/tree-sitter/tree-sitter-go"
+                "v0.20.0")
+               (markdown
+                "https://github.com/ikatyang/tree-sitter-markdown")
+               (make "https://github.com/alemuller/tree-sitter-make")
+               (toml "https://github.com/tree-sitter/tree-sitter-toml")
+               (tsx
+                .
+                ("https://github.com/tree-sitter/tree-sitter-typescript"
+                 "v0.23.2"
+                 "tsx/src"))
+               (typescript
+                .
+                ("https://github.com/tree-sitter/tree-sitter-typescript"
+                 "v0.23.2"
+                 "typescript/src"))
+               (yaml
+                .
+                ("https://github.com/ikatyang/tree-sitter-yaml"
+                 "v0.5.0"))
+               ))
+      (setq treesit-language-source-alist '())
+      (add-to-list 'treesit-language-source-alist grammar)
+      (unless (treesit-language-available-p (car grammar))
+        (treesit-install-language-grammar (car grammar)))))
+  (my/treesit-install-grammars)
+#+end_src
+
+*** Toggle comments
+
+#+begin_src elisp
+(use-package emacs
+  :bind
+  ("C-x /" . comment-or-uncomment-region))
+#+end_src
+
+*** Auto SSH connections
+
+#+begin_src elisp
+(load-file (expand-file-name "scripts/ssh.el" user-emacs-directory))
+(require 'ssh)
+#+end_src
+
+*** Region search
+
+#+begin_src elisp
+(defun my/occur-regions ()
+  (interactive)
+  (occur (format "^ *%s begin-region -- .*$" comment-start)))
+
+(use-package
+ emacs
+ :bind ("M-s r" . my/occur-regions))
+#+end_src
+
+*** Replace string
+
+#+begin_src elisp
+(use-package
+ emacs
+ :bind ("C-c r" . replace-regexp) ("C-c R" . replace-string))
+#+end_src
+
+** Languages
+*** Python
+
+#+begin_src elisp
+(use-package
+ python
+ :config
+ (setq-default python-indent-def-block-scale 1)
+ (load-file (expand-file-name "scripts/python-tests.el" user-emacs-directory))
+ (require 'python-tests)
+ :hook (before-save-hook . delete-trailing-whitespace)
+ :bind (:map python-mode-map ("C-x t r" . python-tests-run)))
+#+end_src
+
+*** SQL
+
+Literate SQL programming
+
+#+begin_src elisp
+(use-package async
+  :config
+  (load-file (expand-file-name "scripts/ob-async-sql.el" user-emacs-directory))
+  (require 'ob-async-sql))
+#+end_src
+
+*** Markdown
+
+Required for better LSP docs rendering
+
+#+begin_src elisp
+(use-package markdown-mode)
+#+end_src
+
+*** CSV
+
+#+begin_src elisp
+(use-package csv-mode)
+#+end_src
+
+*** Javascript
+
+#+begin_src elisp
+(setq-default js-indent-level 2)
+(setq-default web-mode-code-indent-offset 2)
+
+(use-package jtsx
+  :ensure t
+  :after lsp-mode
+  :mode (("\\.jsx?\\'" . jtsx-jsx-mode)
+         ("\\.tsx\\'" . jtsx-tsx-mode)
+         ("\\.ts\\'" . jtsx-typescript-mode))
+  :commands jtsx-install-treesit-language
+  ;; :custom
+  ;; Optional customizations
+  ;; (js-indent-level 2)
+  ;; (typescript-ts-mode-indent-offset 2)
+  ;; (jtsx-switch-indent-offset 0)
+  ;; (jtsx-indent-statement-block-regarding-standalone-parent nil)
+  ;; (jtsx-jsx-element-move-allow-step-out t)
+  ;; (jtsx-enable-jsx-electric-closing-element t)
+  ;; (jtsx-enable-electric-open-newline-between-jsx-element-tags t)
+  ;; (jtsx-enable-jsx-element-tags-auto-sync nil)
+  ;; (jtsx-enable-all-syntax-highlighting-features t)
+  :config
+  (defun jtsx-bind-keys-to-mode-map (mode-map)
+    "Bind keys to MODE-MAP."
+    (define-key mode-map (kbd "C-c C-j") 'jtsx-jump-jsx-element-tag-dwim)
+    (define-key mode-map (kbd "C-c j o") 'jtsx-jump-jsx-opening-tag)
+    (define-key mode-map (kbd "C-c j c") 'jtsx-jump-jsx-closing-tag)
+    (define-key mode-map (kbd "C-c j r") 'jtsx-rename-jsx-element)
+    (define-key mode-map (kbd "C-c <down>") 'jtsx-move-jsx-element-tag-forward)
+    (define-key mode-map (kbd "C-c <up>") 'jtsx-move-jsx-element-tag-backward)
+    (define-key mode-map (kbd "C-c C-<down>") 'jtsx-move-jsx-element-forward)
+    (define-key mode-map (kbd "C-c C-<up>") 'jtsx-move-jsx-element-backward)
+    (define-key mode-map (kbd "C-c C-S-<down>") 'jtsx-move-jsx-element-step-in-forward)
+    (define-key mode-map (kbd "C-c C-S-<up>") 'jtsx-move-jsx-element-step-in-backward)
+    (define-key mode-map (kbd "C-c j w") 'jtsx-wrap-in-jsx-element)
+    (define-key mode-map (kbd "C-c j u") 'jtsx-unwrap-jsx)
+    (define-key mode-map (kbd "C-c j d n") 'jtsx-delete-jsx-node)
+    (define-key mode-map (kbd "C-c j d a") 'jtsx-delete-jsx-attribute)
+    (define-key mode-map (kbd "C-c j t") 'jtsx-toggle-jsx-attributes-orientation)
+    (define-key mode-map (kbd "C-c j h") 'jtsx-rearrange-jsx-attributes-horizontally)
+    (define-key mode-map (kbd "C-c j v") 'jtsx-rearrange-jsx-attributes-vertically))
+    
+  (defun jtsx-bind-keys-to-jtsx-jsx-mode-map ()
+      (jtsx-bind-keys-to-mode-map jtsx-jsx-mode-map))
+
+  (defun jtsx-bind-keys-to-jtsx-tsx-mode-map ()
+      (jtsx-bind-keys-to-mode-map jtsx-tsx-mode-map))
+
+  (add-hook 'jtsx-jsx-mode-hook 'jtsx-bind-keys-to-jtsx-jsx-mode-map)
+  (add-hook 'jtsx-tsx-mode-hook 'jtsx-bind-keys-to-jtsx-tsx-mode-map)
+  :hook
+  (jtsx-tsx-mode . lsp-mode))
+
+(defun my/web-mode-hook ()
+  "Hooks for Web mode."
+  (setq web-mode-markup-indent-offset 2)
+  (setq web-mode-css-indent-offset 2)
+  (setq web-mode-enable-auto-pairing t))
+
+(use-package
+ web-mode
+ :mode (("\\.html?\\'" . web-mode))
+ :hook (web-mode-hook . my/web-mode-hook))
+#+end_src
+
+*** Emacs Lisp
+
+#+begin_src elisp
+(with-eval-after-load 'flymake
+  (setq elisp-flymake-byte-compile-load-path load-path))
+#+end_src
+
+*** LSP
+
+#+begin_src elisp
+(use-package shuttle
+  :load-path "~/.emacs.d/lisp/")
+#+end_src
+
+*** CSS
+
+#+begin_src elisp
+(use-package css-mode)
+#+end_src
+
+*** Plant UML
+
+#+begin_src elisp
+(use-package
+ plantuml-mode
+ :custom
+ (org-plantuml-jar-path "/usr/share/java/plantuml/plantuml.jar")
+ (plantuml-default-exec-mode 'jar)
+ (plantuml-jar-path "/usr/share/java/plantuml/plantuml.jar")
+ (plantuml-indent-level 2)
+ (plantuml-output-type "png")
+ (plantuml-jar-args
+  `("-charset"
+   "UTF-8"
+   "-config"
+   ,(expand-file-name "plantuml.cfg" user-emacs-directory)))
+ (org-plantuml-args
+  `("-headless"
+   "-config"
+   ,(expand-file-name "plantuml.cfg" user-emacs-directory))))
+#+end_src
+
+*** Solidity
+
+#+begin_src elisp
+(use-package
+ solidity-mode
+ :config
+ (defun solidity-at-vsemi-p (&optional pos)
+   (let ((rpos (or pos (point))))
+     (save-excursion
+       (goto-char rpos)
+       (ignore-errors
+         ;; Try to jump back to the word "struct", as if we're at the end of a
+         ;; syntactically-correct struct. Struct body, struct name, the keyword "struct".
+         (forward-sexp -3)
+         (looking-at-p "\\bstruct\\b")))))
+ (add-hook
+  'solidity-mode-hook
+  (lambda () (setq-local c-at-vsemi-p-fn 'solidity-at-vsemi-p))))
+#+end_src
+
+*** YAML
+
+#+begin_src elisp
+(use-package yaml-mode)
+#+end_src
+
+** Compilation
+
+*** ANSI colors
+
+#+begin_src elisp
+(use-package ansi-color
+  :config
+  (defun user/ansi-colorize-buffer ()
+    (let ((buffer-read-only nil))
+      (ansi-color-apply-on-region (point-min) (point-max))))
+  :hook
+  (compilation-filter . user/ansi-colorize-buffer))
+#+end_src
+
+
+*** Increase line length to hide
+
+#+begin_src elisp
+(setq-default compilation-max-output-line-length 5000)
+#+end_src
+
+*** Follow compilation
+
+#+begin_src elisp
+(setq compilation-scroll-output t)
+#+end_src
+
+*** Compilation regular expressions
+
+#+begin_src elisp
+(use-package compile
+  :custom
+  (compilation-max-output-line-length 5000)
+  (compilation-scroll-output t)
+  (compilation-buffer-name-function (lambda (_) (concat "*" compile-command "*")))
+  :bind
+  ("<f8>" . recompile)
+  ("<f9>" . project-compile)
+  :config
+  (dolist (regex '((biome-lint "^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\)\s.*\s━+$" 1 2 3 2 1)
+                   (tsc "^\\(.*\\):\\([0-9]+\\):\\([0-9]+\\)\s-\serror\s.*$" 1 2 3 2 1)))
+    (add-to-list 'compilation-error-regexp-alist-alist regex)
+    (add-to-list 'compilation-error-regexp-alist-alist (car regex))))
+#+end_src
+
+** Snippets
+
+#+begin_src elisp
+(use-package
+ yasnippet
+ :diminish (yas-minor-mode yas-global-mode)
+ :config
+ (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+ (yas-global-mode 1))
+#+end_src
+
+* UI\UX
+
+** Default frame setup
+
+#+begin_src elisp
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+(add-to-list 'default-frame-alist '(undecorated . t))
+(setq-default
+ left-margin-width 1
+ right-margin-width 0)
+(add-to-list 'default-frame-alist '(left-fringe . 0))
+(add-to-list 'default-frame-alist '(right-fringe . 0))
+#+end_src
+
+** Folred structure
+#+begin_src elisp
+(use-package ls-lisp
+  :ensure nil
+  :custom
+  (ls-lisp-dirs-first t)
+  (ls-lisp-use-insert-directory-program nil))
+#+end_src
+** Theme
+
+#+begin_src elisp
+(use-package doom-themes
+  :config
+  (load-theme 'doom-palenight t))
+#+end_src
+** Splash screen
+
+#+begin_src elisp
+(setq-default inhibit-startup-screen t)
+(setq inhibit-splash-screen t)
+(setq inhibit-startup-message t)
+(setq initial-scratch-message "")
+#+end_src
+
+** Line numbers width
+
+#+begin_src elisp
+;; (setq-default display-line-numbers-width 3)
+#+end_src
+
+** Golden ratio
+
+Automatically resizes windows to fit golden ratio
+
+#+begin_src elisp
+(use-package
+ golden-ratio
+ :diminish golden-ratio-mode
+ :init (golden-ratio-mode 1)
+ :config
+ (add-hook 'ediff-startup-hook '(lambda () (golden-ratio-mode -1)) t)
+ :custom
+ (golden-ratio-auto-scale t)
+ (golden-ratio-exclude-buffer-names '("*Occur*" "*xref*" "*Async Shell Command*")))
+#+end_src
+
+** Fonts
+** Essential small tweaks
+
+*** Cursor
+
+#+begin_src elisp
+(blink-cursor-mode t)
+#+end_src
+
+*** No backups (or `~` files)
+
+#+begin_src elisp
+(setq make-backup-files nil)
+(setq create-lockfiles nil)
+(setq-default auto-save-default nil)
+#+end_src
+
+*** System clipboard to kill ring integration
+
+#+begin_src elisp
+(setq save-interprogram-paste-before-kill t)
+#+end_src
+
+** Completion
+
+*** Dabbrev
+
+#+begin_src elisp
+(use-package
+ dabbrev
+ :custom
+ (dabbrev-case-fold-search nil)
+ (dabbrev-abbrev-char-regexp "")
+ :config
+ (add-to-list 'dabbrev-ignored-buffer-modes 'doc-view-mode)
+ (add-to-list 'dabbrev-ignored-buffer-modes 'pdf-view-mode)
+ (defun my/dabbrev-select-buffer (other-buffer)
+   (get-buffer-window other-buffer))
+ (setq dabbrev-friend-buffer-function #'my/dabbrev-select-buffer))
+
+(use-package hippie-exp
+  :bind ("M-/" . hippie-expand)
+  :config
+  (load-file (expand-file-name "scripts/upcase-abbrev-expand.el" user-emacs-directory))
+  (add-to-list
+   'hippie-expand-try-functions-list 'try-complete-upcase-abbrev))
+#+end_src
+
+*** Orderless
+
+#+begin_src elisp
+(use-package orderless
+  :init
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
+*** Vertico
+
+#+begin_src elisp
+(use-package vertico
+  :custom
+  (vertico-count 13)
+  (vertico-resize nil)
+  (vertico-cycle nil)
+  :config
+  (vertico-mode))
+#+end_src
+
+*** Add annotations to completion
+
+#+begin_src elisp
+(use-package marginalia
+  :custom
+  (marginalia-max-relative-age 0)
+  (marginalia-align 'left)
+  :init
+  (marginalia-mode))
+#+end_src
+
+*** Which key
+
+#+begin_src elisp
+(use-package which-key :config (which-key-mode t))
+#+end_src
+
+*** Consult
+
+#+begin_src elisp
+(use-package consult
+  :bind
+  ("C-x p g" . consult-ripgrep)
+  ("C-x b" . consult-buffer)
+  ("M-g i" . consult-imenu)
+  ("M-g l" . consult-line))
+#+end_src
+
+*** Indents
+
+#+begin_src elisp
+(setq-default indent-tabs-mode nil)
+(electric-indent-mode t)
+(setq-default electric-indent-inhibit t)
+(setq backward-delete-char-untabify-method 'hungry)
+#+end_src
+
+*** Line numbers
+
+#+begin_src elisp
+(dolist (mode
+         '(prog-mode-hook
+           org-mode-hook
+           magit-status-mode
+           conf-mode-hook
+           text-mode))
+  (add-hook mode 'display-line-numbers-mode))
+
+(setq-default display-line-numbers-type 'visual)
+#+end_src
+
+*** Essential defaults
+
+#+begin_src elisp
+(setq-default scroll-margin 7)
+(electric-pair-mode 1)
+(menu-bar-mode -1)
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
+(global-auto-revert-mode t)
+(setq help-window-select t)
+(setq-default history-length 25)
+(savehist-mode 1)
+(save-place-mode 1)
+(setq use-dialog-box nil)
+#+end_src
+
+** Navigation
+*** Windows layout
+
+Allows to restores layout after maximizing
+
+#+begin_src elisp
+(winner-mode +1)
+#+end_src
+
+*** Buffers
+
+#+begin_src elisp
+(use-package emacs
+  :bind
+  ("C-," . previous-buffer)
+  ("C-." . next-buffer)
+  ("C-x C-b" . ibuffer)
+  ("C-x k" . kill-current-buffer)
+  ("C-x K" . kill-buffer))
+#+end_src
+
+*** Scroll
+
+#+begin_src elisp
+(defun my/scroll-half-down ()
+  "Scroll down half a window."
+  (interactive)
+  (scroll-down (floor (/ (window-height) 2))))
+
+(defun my/scroll-half-up ()
+  "Scroll up half a window."
+  (interactive)
+  (scroll-up (floor (/ (window-height) 2))))
+
+(use-package emacs
+  :bind
+  ("C-v" . my/scroll-half-up)
+  ("M-v" . my/scroll-half-down))
+#+end_src
+
+*** Duplicate line
+
+#+begin_src elisp
+(use-package emacs :bind ("C-c d" . duplicate-line))
+#+end_src
+
+*** Expand region
+
+#+begin_src elisp
+(use-package expand-region
+  :bind
+  ("C-;" . er/expand-region))
+#+end_src
+
+** Async shell command
+
+#+begin_src elisp
+(setq-default async-shell-command-buffer 'new-buffer)
+#+end_src
+
+* Helper packages
+*** Sudo edit
+
+#+begin_src elisp
+(use-package
+ sudo-edit
+ :ensure t
+ :config
+ (defun my/sudo-edit-find-file ()
+   (interactive)
+   (let ((SHELL (getenv "SHELL")))
+     (setenv "SHELL" "/usr/bin/bash")
+     (call-interactively 'sudo-edit-find-file)
+     (setenv "SHELL" SHELL))))
+#+end_src
+
+*** Auth source
+
+#+begin_src elisp
+(use-package auth-source
+  :custom
+  (auth-sources '("~/.authinfo.gpg"))
+  (auth-source-debug 'trivia)
+  (epg-pinentry-mode 'loopback)
+  :config
+  (auth-source-pass-enable))
+#+end_src
+
+* Org
+** Base
+*** Main setup function
+
+#+begin_src elisp
+(defun my/org-mode-setup ()
+  (require 'org-tempo)
+  (setq org-ellipsis " ▾")
+  (setq org-return-follows-link t)
+  (setq org-edit-src-content-indentetion 0)
+  (setq-default org-edit-src-content-indentation 0) ;; Set src block automatic indent to 0 instead of 2
+  (setq org-imenu-depth 4)
+  (setq-default org-image-actual-width nil)
+  (font-lock-add-keywords 'org-mode
+                          '(("^ *\\([-]\\) "
+                             (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•")))))))
+#+end_src
+
+*** Indents
+
+#+begin_src elisp
+(use-package org-indent
+  :load-path (lambda () (expand-file-name "scripts/org-indent.el" user-emacs-directory)))
+#+end_src
+
+*** Custom hook
+
+#+begin_src elisp
+(defun my/org-mode-hook ()
+  (setq org-indent-mode-turns-on-hiding-stars nil)
+  (org-indent-mode)
+  (set-face-attribute 'org-level-1 nil :height 1.5)
+  (set-face-attribute 'org-level-2 nil :height 1.35)
+  (set-face-attribute 'org-level-2 nil :height 1.2)
+  (visual-line-mode 1))
+#+end_src
+
+*** Actual setup
+
+#+begin_src elisp
+(use-package
+ org
+ :config
+ (my/org-mode-setup)
+ (diminish 'org-auto-tangle-mode)
+ (diminish 'org-indent-mode)
+ :hook (org-mode . my/org-mode-hook)
+ :bind
+ (:map org-mode-map ("C-," . nil))
+ ("C-c l" . org-store-link)
+ ("M-n" . org-next-link)
+ ("M-p" . org-previous-link)
+ ("C-c a" . org-agenda)
+ ("C-c t" . org-timer-set-timer))
+#+end_src
+
+*** Tags
+
+#+begin_src elisp
+(setq org-tag-alist
+      '(("project") ("idea") ("post") ("feature") ("improve") ("bug") ("mvp") ("backlog") ("noexport")))
+#+end_src
+
+** Table of contents
+
+#+begin_src elisp
+(use-package toc-org
+  :commands toc-org-enable
+  :init (add-hook 'org-mode-hook 'toc-org-enable))
+#+end_src
+
+** Babel
+*** Base
+
+#+begin_src elisp
+(setq org-confirm-babel-evaluate nil)
+
+(setq org-babel-default-header-args
+      '((:results . "replace")))
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((shell . t)
+   (python . t)
+   (sqlite . t)
+   (emacs-lisp . t)
+   (plantuml . t)
+   (plantuml . t)
+   (awk . t)
+   (sql . t)))
+#+end_src
+
+*** Plant UML
+
+#+begin_src elisp
+(add-to-list 'org-src-lang-modes '("plantuml" . plantuml))
+(org-babel-do-load-languages 'org-babel-load-languages '((plantuml . t)))
+#+end_src
+
+*** Execute all blocks
+
+#+begin_src elisp
+(defun my/org-babel-execute-all-src-blocks ()
+  "Execute all source code blocks in the current Org buffer."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (while (search-forward-regexp org-babel-src-block-regexp nil t)
+      (org-babel-execute-src-block))))
+#+end_src
+
+** Agenda
+
+*** Base
+
+#+begin_src elisp
+;(setq org-directory (expand-file-name "~/notes/org"))
+;(setq org-agenda-files (directory-files-recursively "~/notes/org/" "\\.org$"))
+(setq org-agenda-start-with-log-mode t)
+(setq org-log-done 'time)
+(setq org-log-into-drawer t)
+#+end_src
+
+*** Custom todo states
+
+#+begin_src elisp
+(setq org-todo-keywords
+  '((sequence "TODO(t)" "|" "DONE(d!)")
+    (sequence "TOREAD(tr)" "|" "READING(pr)" "|" "FINISED(f!")
+    (sequence "INPROGRESS(p)" "INTEST(v)" "HOLD(h)" "|" "COMPLETED(c)" "CANCELED(k@)")))
+#+end_src
+
+** Source code block tag expansion
+
+#+begin_src elisp
+(use-package org
+ :config
+ (dolist (setup
+          '(("sh" . "src shell")
+            ("el" . "src elisp")
+            ("sq" . "src sql")
+            ("sqt" . "src sql :var table=table-name")
+            ("py" . "src python")
+            ("pu" . "src plantuml :file ")))
+   (add-to-list 'org-structure-template-alist setup)))
+#+end_src
+
+* Shells and terminals
+
+** Shell
+
+Turn off duplicating lines on execution
+
+#+begin_src elisp
+(setq comint-input-ignoredups t)
+(setq shell-file-name "bash")
+#+end_src
+
+** Eshell
+
+#+begin_src elisp
+(use-package
+ eshell
+ :hook
+ (eshell-mode . completion-preview-mode)
+ :bind
+ (:map
+  eshell-command-mode-map
+  ("C-l" .
+   (lambda ()
+     (interactive)
+     (eshell/clear-scrollback))))
+ :config
+ (setq
+  eshell-buffer-maximum-lines 10000
+  eshell-scroll-to-bottom-on-input t
+  eshell-history-append t
+  eshell-visual-commands '("make" "podman run" "bash" "btop" "ssh" "psql")))
+#+end_src
+
+** Eat
+
+#+begin_src elisp
+(use-package eat
+  :diminish
+  eat-eshell-mode
+  :config
+  (add-hook 'eshell-mode-hook #'eat-eshell-mode)
+  (add-hook 'eshell-mode-hook #'eat-eshell-visual-command-mode))
+#+end_src
+
+* Tool
+** Tramp
+
+#+begin_src elisp
+(setq remote-file-name-inhibit-cache nil)
+(setq vc-ignore-dir-regexp
+      (format "%s\\|%s"
+                    vc-ignore-dir-regexp
+
+                    tramp-file-name-regexp))
+(setq tramp-verbose 1)
+#+end_src
+
+** GPTel
+
+#+begin_src elisp
+(use-package
+ gptel
+ :config
+ (setq
+  gptel-log-level 'info
+  gptel-default-mode 'markdown-mode
+  gptel-model 'gemini-2.0-flash
+  gptel-backend
+  (gptel-make-gemini
+   "Gemini"
+   :key 'gptel-api-key-from-auth-source
+   :stream t))
+ (add-to-list
+  'gptel-directives
+  '(frontend
+    .
+    "You are a senior frontend developer focused on React, TypeScript, TailwindCSS and Feature sliced design. You prefer use pnpm and biome and your main editor is GNU Emacs. Write code without comments. Answer with text only to the theoretical questions."))
+ (add-to-list
+  'gptel-directives
+  '(python
+    .
+    "Use python 3.13 features, do not import Optional or List from typing, use ~None | int~ or ~list[int]~ instead. Prefer match case when possible. Always write typehints for the arguments and return types. Use double quotes. Do not arrange functions in a C language style, so all used functions in the main one should be below it. Create custom exceptions inherited from the ~Exception~ class. User dry-python.returns.result for @safe decorator and Success/Failure. If ~try..except~ is required, write as less as possible lines inside of it and use the required exception class instead of the base one (or write in a comment, that you don't know the valid one). Do not add doc strings or helper commentaries to the code. DO NOT FORMAT CODE AS org or markdown code blocks"))
+ :bind ("C-c g" . gptel-menu))
+#+end_src
+
+** Elfeed
+#+begin_src elisp
+(use-package
+ elfeed
+ :config
+ (setq
+  elfeed-feeds
+  (quote
+   (("https://www.mdpi.com/rss" research)
+    ("https://protesilaos.com/interpretations.xml" philosophy)
+    ("https://protesilaos.com/codelog.xml" emacs)
+    ("https://pythonspeed.com/atom.xml" python)
+    ("https://fabiensanglard.net/rss.xml" software)
+    ("www.redblobgames.com/blog/posts.xml" math algorithms)
+    ("https://www.reddit.com/r/emacsporn.rss" reddit emacs)
+    ("https://opensource.com/feed" opensource linux)
+    ("https://linux.softpedia.com/backend.xml" softpedia linux)
+    ("https://itsfoss.com/feed/" itsfoss linux)
+    ("https://www.zdnet.com/topic/linux/rss.xml" zdnet linux)
+    ("https://www.computerworld.com/index.rss" computerworld linux)
+    ("https://www.networkworld.com/category/linux/index.rss" networkworld linux)
+    ("https://www.techrepublic.com/rssfeeds/topic/open-source/" techrepublic linux)
+    ("https://systemcrafters.net/rss/news.xml" emacs)
+    ("https://hnrss.org/frontpage" hackernews)
+    ("http://feeds.feedburner.com/blogspot/vEnU" music jazz)
+    ("https://rss.arxiv.org/rss/cs.MA" news multiagent-systems)
+    ("https://www.reddit.com/r/aipromptprogramming.rss" reddit ml)
+    ("https://blog.python.org/feeds/posts/default?alt=rss" python news)
+    ("https://abdullin.substack.com/feed" llm)))))
+#+end_src
+
+** Magit
+
+*** Magit
+
+#+begin_src elisp
+(use-package
+ magit
+ :custom (magit-status-buffer-switch-function 'switch-to-buffer)
+ (magit-display-buffer-function
+  'magit-display-buffer-same-window-except-diff-v1)
+ :bind ("C-x g o" . magit) ("C-x g c" . magit-commit)
+ :hook (magit-status-mode-hook . display-line-numbers-mode))
+#+end_src
+
+Actually added some
+
+*** Gutter
+
+#+begin_src elisp
+(use-package
+ git-gutter
+ :diminish git-gutter-mode
+ :custom
+ (git-gutter:modified-sign "~")
+ (git-gutter:added-sign "+")
+ (git-gutter:deleted-sign "-")
+ :config
+ (defun my/stage-hunk ()
+   "Wrapper around git-gutter:stage-hunk but without confirm requirement"
+   (interactive)
+   (git-gutter:awhen
+    (git-gutter:search-here-diffinfo git-gutter:diffinfos)
+    (git-gutter:do-stage-hunk it)
+    (git-gutter:update-all-windows)
+    (message "✅ staged" (buffer-name))))
+ (add-to-list 'git-gutter:update-hooks 'focus-in-hook)
+ (add-to-list 'git-gutter:update-hooks 'magit-post-refresh-hook)
+ (add-to-list 'git-gutter:update-commands 'other-window)
+ :bind
+ ("M-)" . git-gutter:next-hunk)
+ ("M-(" . git-gutter:previous-hunk)
+ ("C-x g s" . my/stage-hunk)
+ :hook
+ ((org-mode prog-mode) . git-gutter-mode))
+#+end_src
+
+*** Merge
+
+#+begin_src elisp
+(use-package smerge-mode
+  :diminish smerge-mode)
+#+end_src
+
+*** Ediff
+
+#+begin_src elisp
+(defun my/ediff-hook ()
+  (ediff-setup-keymap)
+  (define-key ediff-mode-map "j" 'ediff-next-difference)
+  (define-key ediff-mode-map "k" 'ediff-previous-difference)
+  (golden-ratio-mode nil))
+
+(use-package
+ ediff
+ :custom
+ (ediff-split-window-function 'split-window-horizontally)
+ (ediff-window-setup-function 'ediff-setup-windows-plain)
+ :hook (ediff-mode . my/ediff-hook))
+#+end_src
+
+** Project
+
+*** Register not only ~.git~ directories
+
+#+begin_src elisp
+(defun my/dir-contains-project-marker (dir)
+  "Checks if `.project' file is present in directory at DIR path."
+  (let ((project-marker-path (file-name-concat dir ".project")))
+    (when (file-exists-p project-marker-path)
+       dir)))
+
+(customize-set-variable 'project-find-functions
+                        (list #'project-try-vc
+                              #'my/dir-contains-project-marker))
+#+end_src
+
+*** Project extensions
+
+#+begin_src elisp
+(load-file (expand-file-name "scripts/my-extensions.el" user-emacs-directory))
+(load-file (expand-file-name "scripts/project-ext.el" user-emacs-directory))
+(require 'project-ext)
+#+end_src
+
+*** Build from ~Makefile~
+
+#+begin_src elisp
+(use-package
+ make-project
+ :load-path "~/.emacs.d/scripts"
+ :bind ("C-x p c" . make-project-run))
+#+end_src
+
+*** Binds
+
+#+begin_src elisp
+(defun my/project-or-default-eshell ()
+  "Open eshell in project root or in the current."
+  (interactive)
+  (if (project-current)
+      (project-eshell)
+    (eshell)))
+
+(use-package project
+  :custom
+  (project-mode-line t)
+  :config
+  (defun my/project-switch ()
+    (interactive)
+    (let ((project-dir (project-prompt-project-dir)))
+      (setq-local project-current-directory-override project-dir)
+      (project-find-file)))
+  :bind
+  ("C-x p e" . my/project-or-default-eshell)
+  ("C-x p F" . project-root-find-file)
+  ("C-x p p" . my/project-switch))
+#+end_src
+
+** Dired
+*** Bulk dired action
+
+#+begin_src elisp
+(defun my/for-each-dired-marked-file (fn)
+  "Do stuff for each marked file, only works in dired window"
+  (interactive)
+  (if (eq major-mode 'dired-mode)
+      (let ((filenames (dired-get-marked-files)))
+        (mapcar fn filenames))
+    (error (format "Not a Dired buffer \(%s\)" major-mode))))
+#+end_src
+
+Add file to gptl context
+
+#+begin_src elisp
+(defun my/dired-gptl-context-files ()
+  (interactive)
+  (my/for-each-dired-marked-file 'gptel-add-file))
+#+end_src
+
+** Execute selected shell command
+
+#+begin_src elisp
+(defun my/async-shell-command-on-region ()
+  (interactive)
+  (async-shell-command (buffer-substring (region-beginning) (region-end))))
+#+end_src
+
+** LLM commit
+#+begin_src elisp
+(use-package llm-commit
+  :ensure nil
+  :load-path "scripts"
+  :hook (git-commit-mode . llm-commit:generate))
+#+end_src
+* Unbinds
+** C-z unbind
+#+begin_src elisp
+(global-unset-key (kbd "C-z"))
+(global-unset-key (kbd "C-x C-z"))
+#+end_src
+* Final
+
+#+begin_src elisp
+(message "Config fully loaded")
+#+end_src
