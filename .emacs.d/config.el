@@ -183,8 +183,8 @@
   (add-hook 'jtsx-jsx-mode-hook 'jtsx-bind-keys-to-jtsx-jsx-mode-map)
   (add-hook 'jtsx-tsx-mode-hook 'jtsx-bind-keys-to-jtsx-tsx-mode-map)
   :hook
-  (jtsx-tsx-mode . lsp-mode))
-
+  (jtsx-tsx-mode . lsp-mode)
+  (jtsx-typescript-mode . lsp-mode))
 (defun my/web-mode-hook ()
   "Hooks for Web mode."
   (setq web-mode-markup-indent-offset 2)
@@ -291,11 +291,6 @@
   :config
   (load-theme 'doom-palenight t))
 
-(setq-default inhibit-startup-screen t)
-(setq inhibit-splash-screen t)
-(setq inhibit-startup-message t)
-(setq initial-scratch-message "")
-
 ;; (setq-default display-line-numbers-width 3)
 
 (use-package
@@ -320,6 +315,68 @@
                     :font "Iosevka"
                     :height 1.0
                     :weight 'medium)
+
+(use-package all-the-icons
+  :ensure t
+  :if (display-graphic-p))
+
+(use-package all-the-icons-dired
+  :ensure t
+  :after all-the-icons
+  :hook
+  (dired-mode . all-the-icons-dired-mode))
+
+(use-package page-break-lines
+  :ensure t)
+
+(use-package dashboard
+  :ensure t
+  :after (all-the-icons page-break-lines)
+  :config
+  (dashboard-setup-startup-hook)
+  (setq
+   dashboard-banner-logo-title "Wuzzup nigger?"
+   dashboard-startup-banner (expand-file-name  "images/elon.gif" user-emacs-directory)
+   dashboard-center-content t
+   dashboard-items '((recents   . 5)
+                     (bookmarks . 5)
+                     (projects  . 5)
+                     (registers . 5))
+   dashboard-item-shortcuts '((recents . "r")
+                              (bookmarks . "m")
+                              (projects  . "p")
+                              (registers . "e"))
+   dashboard-icon-type 'all-the-icons
+   dashboard-set-heading-icons t
+   dashboard-set-file-icons t
+   dashboard-startupify-list '(   dashboard-insert-banner
+                                  dashboard-insert-newline
+                                  dashboard-insert-banner-title
+                                  dashboard-insert-newline
+                                  dashboard-insert-navigator
+                                  dashboard-insert-newline
+                                  dashboard-insert-items)
+   dashboard-navigator-buttons
+    `(
+       ((,(all-the-icons-octicon "mark-github" :height 1.1 :v-adjust 0.0)
+          "My repos"
+          nil
+          (lambda (&rest _) (browse-url "https://github.com/Redmoor19?tab=repositories")))
+         ("" "Musichka" nil (lambda (&rest _) (browse_url "https://music.youtube.com/")))
+         (,(all-the-icons-faicon "tasks" :v-adjust 0) "Linear" nil  (lambda (&rest _) (browse-url "https://linear.app/aishift/team/TMAIS/projects/all")) ))
+      )
+   )
+
+  (defun dashboard-octicon (name &rest args)
+    "Get the formatted octicon by NAME.
+ARGS should be a plist containing `:height', `:v-adjust', or `:face' properties."
+    (dashboard-replace-displayable
+     (apply #'all-the-icons-faicon name args)))
+
+  (dashboard-modify-heading-icons '((recents   . "history")
+                                    (bookmarks . "star")
+                                    (projects . "code-fork")
+                                    (registers . "table"))))
 
 (blink-cursor-mode t)
 
