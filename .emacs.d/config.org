@@ -271,7 +271,7 @@ Required for better LSP docs rendering
     (define-key mode-map (kbd "C-c j t") 'jtsx-toggle-jsx-attributes-orientation)
     (define-key mode-map (kbd "C-c j h") 'jtsx-rearrange-jsx-attributes-horizontally)
     (define-key mode-map (kbd "C-c j v") 'jtsx-rearrange-jsx-attributes-vertically))
-    
+
   (defun jtsx-bind-keys-to-jtsx-jsx-mode-map ()
       (jtsx-bind-keys-to-mode-map jtsx-jsx-mode-map))
 
@@ -480,6 +480,21 @@ Automatically resizes windows to fit golden ratio
 #+end_src
 
 ** Fonts
+#+begin_src elisp
+(set-face-attribute 'default nil
+                    :font "Iosevka"
+                    :height 130
+                    :weight 'medium)
+(set-face-attribute 'variable-pitch nil
+                    :font "Iosevka"
+                    :height 130
+                    :weight 'medium)
+(set-face-attribute 'fixed-pitch nil
+                    :font "Iosevka"
+                    :height 1.0
+                    :weight 'medium)
+
+#+end_src
 ** Essential small tweaks
 
 *** Cursor
@@ -1130,6 +1145,12 @@ Add file to gptl context
   :ensure nil
   :load-path "scripts"
   :hook (git-commit-mode . llm-commit:generate))
+#+end_src
+
+** App-launcher
+#+begin_src elisp
+(use-package app-launcher
+  :load-path "scripts")
 #+end_src
 * Unbinds
 ** C-z unbind
