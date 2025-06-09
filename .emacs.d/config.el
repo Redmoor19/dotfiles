@@ -270,7 +270,8 @@
  yasnippet
  :diminish (yas-minor-mode yas-global-mode)
  :config
- (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+ (setq
+    yas-snippet-dirs '("~/.emacs.d/snippets"))
  (yas-global-mode 1))
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
@@ -362,7 +363,7 @@
           "My repos"
           nil
           (lambda (&rest _) (browse-url "https://github.com/Redmoor19?tab=repositories")))
-         ("" "Musichka" nil (lambda (&rest _) (browse_url "https://music.youtube.com/")))
+         ("" "Musichka" nil (lambda (&rest _) (browse-url "https://music.youtube.com/")))
          (,(all-the-icons-faicon "tasks" :v-adjust 0) "Linear" nil  (lambda (&rest _) (browse-url "https://linear.app/aishift/team/TMAIS/projects/all")) ))
       )
    )
@@ -513,6 +514,11 @@ ARGS should be a plist containing `:height', `:v-adjust', or `:face' properties.
   (epg-pinentry-mode 'loopback)
   :config
   (auth-source-pass-enable))
+
+(use-package lorem-ipsum
+  :ensure t
+  :config
+  (lorem-ipsum-use-default-bindings))
 
 (defun my/org-mode-setup ()
   (require 'org-tempo)

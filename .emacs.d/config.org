@@ -415,7 +415,8 @@ Required for better LSP docs rendering
  yasnippet
  :diminish (yas-minor-mode yas-global-mode)
  :config
- (setq yas-snippet-dirs '("~/.emacs.d/snippets"))
+ (setq
+    yas-snippet-dirs '("~/.emacs.d/snippets"))
  (yas-global-mode 1))
 #+end_src
 
@@ -539,7 +540,7 @@ Automatically resizes windows to fit golden ratio
           "My repos"
           nil
           (lambda (&rest _) (browse-url "https://github.com/Redmoor19?tab=repositories")))
-         ("" "Musichka" nil (lambda (&rest _) (browse_url "https://music.youtube.com/")))
+         ("" "Musichka" nil (lambda (&rest _) (browse-url "https://music.youtube.com/")))
          (,(all-the-icons-faicon "tasks" :v-adjust 0) "Linear" nil  (lambda (&rest _) (browse-url "https://linear.app/aishift/team/TMAIS/projects/all")) ))
       )
    )
@@ -753,7 +754,7 @@ Allows to restores layout after maximizing
 #+end_src
 
 * Helper packages
-*** Sudo edit
+*** Sufdo edit
 
 #+begin_src elisp
 (use-package
@@ -778,6 +779,14 @@ Allows to restores layout after maximizing
   (epg-pinentry-mode 'loopback)
   :config
   (auth-source-pass-enable))
+#+end_src
+
+*** Lorem
+#+begin_src elisp
+(use-package lorem-ipsum
+  :ensure t
+  :config
+  (lorem-ipsum-use-default-bindings))
 #+end_src
 
 * Org
