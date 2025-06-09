@@ -114,6 +114,24 @@
  emacs
  :bind ("C-c r" . replace-regexp) ("C-c R" . replace-string))
 
+(use-package go-mode
+  :ensure t
+  :after lsp-mode
+  :config
+  (add-hook 'go-mode-hook 'lsp-deferred)
+  (setq lsp-go-gopls-server-path "~/go/bin/gopls")
+  (defun lsp-go-install-save-hooks ()
+    (add-hook 'before-save-hook #'lsp-format-buffer t t)
+    (add-hook 'before-save-hook #'lsp-organize-imports t t))
+  (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+ )
+
+(use-package go-doc
+  :after go-mode
+  :load-path "script"
+  :bind (:map go-mode-map
+              ("C-c s" . go-doc)))
+
 (use-package
  python
  :config
