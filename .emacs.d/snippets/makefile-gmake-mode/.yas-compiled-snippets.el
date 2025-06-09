@@ -2,13 +2,13 @@
 ;;; Snippet definitions:
 ;;;
 (yas-define-snippets 'makefile-gmake-mode
-		     '(("deploy"
-			"deploy-$1: install-collections\n	ansible-playbook $1.yml\n"
-			"deploy" nil nil
-			((yas-indent-line nil)
-			 (yas-wrap-around-region 'nil))
-			"/home/user/.emacs.d/snippets/makefile-gmake-mode/deploy"
-			nil nil)))
+                     '(("deploy"
+                        "deploy-$1: install-collections\n	ansible-playbook $1.yml\n"
+                        "deploy" nil nil
+                        ((yas-indent-line nil)
+                         (yas-wrap-around-region 'nil))
+                        "/home/redmoor/.emacs.d/snippets/makefile-gmake-mode/deploy"
+                        nil nil)))
 
 
-;;; Do not edit! File generated at Thu May 22 21:23:38 2025
+;;; Do not edit! File generated at Wed May 28 17:50:56 2025
