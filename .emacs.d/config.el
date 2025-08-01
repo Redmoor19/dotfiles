@@ -119,12 +119,11 @@
   :after lsp-mode
   :config
   (add-hook 'go-mode-hook 'lsp-deferred)
-  (setq lsp-go-gopls-server-path "~/go/bin/gopls")
   (defun lsp-go-install-save-hooks ()
-    (add-hook 'before-save-hook #'lsp-format-buffer t t)
-    (add-hook 'before-save-hook #'lsp-organize-imports t t))
-  (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
- )
+    (setq tab-width 2
+          standard-indent 2
+          indent-tabs-mode nil))
+  (add-hook 'go-mode-hook #'lsp-go-install-save-hooks))
 
 (use-package go-doc
   :after go-mode
@@ -160,6 +159,9 @@
          ("\\.tsx\\'" . jtsx-tsx-mode)
          ("\\.ts\\'" . jtsx-typescript-mode))
   :commands jtsx-install-treesit-language
+  :hook ((jtsx-jsx-mode . hs-minor-mode)
+         (jtsx-tsx-mode . hs-minor-mode)
+         (jtsx-typescript-mode . hs-minor-mode))
   ;; :custom
   ;; Optional customizations
   ;; (js-indent-level 2)
@@ -209,10 +211,12 @@
   (setq web-mode-css-indent-offset 2)
   (setq web-mode-enable-auto-pairing t))
 
-(use-package
- web-mode
- :mode (("\\.html?\\'" . web-mode))
- :hook (web-mode-hook . my/web-mode-hook))
+(use-package web-mode
+  :ensure t
+  :config
+  (setq web-mode-engines-alist
+	'(("go"    . "\\.html\\'")))
+  (add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode)))
 
 (with-eval-after-load 'flymake
   (setq elisp-flymake-byte-compile-load-path load-path))

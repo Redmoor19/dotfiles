@@ -35,6 +35,7 @@
   (lsp-diagnostics-provider :flycheck)
   :hook
   (tsx-mode . lsp)
+  (jsx-mode . lsp)
   :commands lsp)
 
 (use-package flycheck
@@ -59,6 +60,7 @@
              js2-mode
              js-ts-mode
              jtsx-tsx-mode
+             jtsx-jsx-mode
              clojure-mode))
     (add-to-list 'lsp-tailwindcss-major-modes tw-major-mode)))
 
