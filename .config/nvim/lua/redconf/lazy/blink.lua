@@ -27,7 +27,9 @@ return { -- Autocompletion
 					--   end,
 					-- },
 				},
-				opts = {},
+      config = function()
+        require("redconf.snippets.javascriptreact")
+      end,
 			},
 			"folke/lazydev.nvim",
 		},
